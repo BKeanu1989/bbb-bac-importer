@@ -17,7 +17,6 @@ class CSV_Importer {
 
     public function init() {
         $this->setup();
-        $this->read_csv();
         $this->handler();
     }
 
@@ -28,18 +27,16 @@ class CSV_Importer {
     }
 
     public function handler() {
-        for ($i = 0; $i < count($this->lines); $i++) {
-            $line = $this->lines[$i];
+        for ($i = 0; $i < count($this->cherry_picked_lines); $i++) {
+            $line = $this->cherry_picked_lines[$i];
             // list($booking_day, $) = $line;
-            $this->cherry_pick_cells($line);
-
-            $order_id = $this->get_order_id($this->picked);
-            $valid = $this->validate_bac($this->picked);
+            $order_id = $this->get_order_id($line);
+            $valid = $this->validate_bac($line);
             if (!$valid) {
                 $this->errors[] = $line;
             }
 
-            $success = $this->update_order_status($this->picked);
+            $success = $this->update_order_status($line);
         }
     }
 
@@ -78,7 +75,7 @@ class CSV_Importer {
             }
             $outerArray[] = $innerArray;
         }
-        $this->picked_v2 = $outerArray;
+        $this->cherry_picked_lines = $outerArray;
     }
 
     public function validate_bac($line) {
@@ -93,7 +90,9 @@ class CSV_Importer {
 
     public function get_order_id( $line) {
 
-        $pattern = '\d+';
+        $pattern = '/\d+/';
+        $text = $line['purpose'];
+
         preg_match($pattern, $text, $matches);
 
         return $matches[0];
