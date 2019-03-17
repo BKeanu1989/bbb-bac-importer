@@ -12,7 +12,10 @@ Domain Path: /languages
 
 if (! defined('ABSPATH')) exit;
 
+$upload_dir = wp_upload_dir();
+$bbb_bac_uploads = $upload_dir['basedir'] . '/' . 'bbb-bac-importer';
 define('BBB_BAC_IMPORTER_PATH', WP_PLUGIN_DIR . '/bbb-bac-importer/');
+define('BBB_BAC_IMPORTER_UPLOADS', $bbb_bac_uploads);
 
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
 
@@ -49,6 +52,17 @@ function bbb_import_bacs()
     $importer = new CSV_Importer($file_data['tmp_name']);
     $lines = $importer->init();
 
+    var_dump($importer);
     $redirect_to = add_query_arg( array( 'page' => 'bbb-bac-importer' ), admin_url( 'admin.php' ) );
     wp_safe_redirect($redirect_to);
 }
+
+function plugin_prefix_function()
+{
+
+    if (!file_exists($bbb_bac_uploads)) {
+        wp_mkdir_p($bbb_bac_uploads);
+    }
+
+}
+register_activation_hook(__FILE__, 'plugin_prefix_function');
