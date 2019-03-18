@@ -3,11 +3,15 @@
 class CSV_Importer {
 
     public function __construct(string $filePath) {
+        $this->blacklist = [
+            'sumup',
+            'paypal'
+        ];
         $this->file = $filePath;
         $this->lines = [];
-        $this->errors = [];
-        $this->successes = [];
-        $this->failed = [];
+        $this->errors = [['type' => 'errors']];
+        $this->successes = [['type' => 'successes']];
+        $this->failed = [['type' => 'failes']];
         $this->columns = [
             3 => 'payer_name',
             4 => 'purpose',
@@ -15,6 +19,7 @@ class CSV_Importer {
             16 => 'have'
         ];
         $this->picked = [];
+        
     }
 
     public function init() {
@@ -39,7 +44,7 @@ class CSV_Importer {
             $this->evaluate($line);
         }
         $controlFileData[] = $this->successes;
-        $controlFileData[] = $this->fails;
+        $controlFileData[] = $this->failed;
         $controlFileData[] = $this->errors;
         
         $fileHandler = new BBB_File_Handler();
@@ -62,6 +67,9 @@ class CSV_Importer {
         $line['order_id'] = $order_id;
         $order_price = $this->get_order_price($line);
         $line['order_price'] = $order_price;
+
+        $line['order_status'] = $this->get_order_status($line);
+        
         $payer_name = $line['payer_name'];
         $valid = $this->validate_bac($line);
         if (!$valid) {
@@ -126,17 +134,27 @@ class CSV_Importer {
     }
 
     public function validate_bac($line) {
-        $valid = false;
+        try {
+            $valid = false;
 
-        $order_price = floatval($line['order_price']);
-        $have = floatval($line['have']);
+            $order_price = floatval($line['order_price']);
+            $have = floatval($line['have']);
 
-        if (isset($line['order_id']) && !empty($line['order_id'])) {
-            if ($have >= $order_price) {
-                return true;
+            $blacklisted = $this->check_blacklist($line);
+            if ($blacklisted) {
+                return $valid;
             }
+
+            if (isset($line['order_id']) && !empty($line['order_id']) && $line['order_price'] !== NULL) {
+                if ($have >= $order_price) {
+                    return true;
+                }
+            }
+            return $valid;
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            return false;
         }
-        return $valid;
     }
 
     public function get_order_id( $line) {
@@ -150,12 +168,15 @@ class CSV_Importer {
     }
 
     public function get_order_price($line) {
-        global $wpdb;
-        $order_id = (int) $line['order_id'];
-        $prepared = $wpdb->prepare("SELECT meta_value FROM {$wpdb->prefix}postmeta WHERE meta_key = '_order_total' AND post_id = %d", $order_id);
-        $order_price = $wpdb->get_var($prepared);
+        try {
+            $order_id = (int) $line['order_id'];
+            $order = new WC_Order($order_id);
 
-        return $order_price;
+            $order_price = $order->get_total();
+            return $order_price;
+        } catch (Exception $e)  {
+            error_log($e->getMessage());
+        }
     }
 
     public function get_name($line) {
@@ -192,19 +213,48 @@ class CSV_Importer {
         }
     }
 
-    public function update_order_status($line) {
-        // return true;
-        global $wpdb;
-        $order_id = (int) $line['order_id'];
-        $order = new WC_Order($order_id);
-        $order_status = $order->get_status();
-        if ($order_status !== 'on-hold') {
-            return false;
-        } 
-        var_dump($order_status);
-        // $updated = $order->update_status('completed', 'Update Status via Überweisungsimport');
-        $updated = true;
-        return $updated;
+    public function get_order_status($line)
+    {
+        try {
+            $order_id = (int) $line['order_id'];
+            $order = new WC_Order($order_id);
+            $order_status = $order->get_status();
+
+            return $order_status;
+        } catch(Exception $e) {
+            error_log($e->getMessage());
+        }
+    }
+
+    /**
+     * paypal, sumup etc
+     * 
+     * returns true if contains blacklisted name
+     */
+
+    public function check_blacklist($line, $blacklist = []) 
+    {
+        $blacklist = (empty($blacklist)) ? $this->blacklist : $blacklist;
+        $payer_name = strtolower($line['payer_name']);
+        if (in_array($payer_name, $blacklist)) {
+            return true;
+        }
+        return false;
+    }
+
+    public function update_order_status($line) 
+    {
+        try {
+            $order_status = $line['order_status'];
+            if ($order_status !== 'on-hold') {
+                return false;
+            } 
+            
+            $updated = $order->update_status('completed', 'Update Status via Überweisungsimport');
+            return $updated;
+        } catch(Exception $e) {
+            error_log($e->getMessage());
+        }
     }
 
 }
