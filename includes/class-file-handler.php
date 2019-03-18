@@ -11,21 +11,29 @@ class BBB_File_Handler{
         if ($header && !empty($header)) {
             array_unshift($data, $header);
         }
-        $fp = fopen(BBB_BAC_IMPORTER_UPLOADS . "{$this->fileName}.csv", 'w');
+        $fp = fopen(BBB_BAC_IMPORTER_UPLOADS . "/{$this->fileName}.csv", 'w');
 
-        foreach ($data as $fields) {
-            fputcsv($fp, $fields);
+        // types == success, fails, errors
+        foreach($data AS $types) {
+            if (is_array($types)) {
+                foreach ($types as $fields) {
+                    fputcsv($fp, $fields);
+                }
+            } else {
+                fputcsv($fp, $types);
+            }
         }
         fclose($fp);
     }
 
     public function download($type = '.csv') 
     {
-        $filepath = BBB_BAC_IMPORTER_UPLOADS . $this->fileName . $type;
+        $filepath = BBB_BAC_IMPORTER_UPLOADS . '/' . $this->fileName . $type;
+        $baseName = basename($filepath);
         if(file_exists($filepath)) {
             header('Content-Description: File Transfer');
             header('Content-Type: application/octet-stream');
-            header('Content-Disposition: attachment; filename="'.basename($filepath).'"');
+            header('Content-Disposition: attachment; filename="'.$baseName.'"');
             // header('Content-Disposition: attachment; filename="'.BBB_BAC_IMPORTER_UPLOADS.basename($filepath).'"');
             header('Expires: 0');
             header('Cache-Control: must-revalidate');
