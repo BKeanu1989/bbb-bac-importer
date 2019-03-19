@@ -57,7 +57,7 @@ function bbb_import_bacs()
     wp_safe_redirect($redirect_to);
 }
 
-function plugin_prefix_function()
+function bbb_bac_plugin_prefix_function()
 {
 
     if (!file_exists($bbb_bac_uploads)) {
@@ -65,4 +65,4 @@ function plugin_prefix_function()
     }
 
 }
-register_activation_hook(__FILE__, 'plugin_prefix_function');
+register_activation_hook(__FILE__, 'bbb_bac_plugin_prefix_function');
