@@ -245,11 +245,12 @@ class CSV_Importer {
     public function update_order_status($line) 
     {
         try {
+            $order_id = $line['order_id'];
             $order_status = $line['order_status'];
             if ($order_status !== 'on-hold') {
                 return false;
             } 
-            
+            $order = new WC_Order($order_id);
             $updated = $order->update_status('completed', 'Update Status via Überweisungsimport');
             return $updated;
         } catch(Exception $e) {
